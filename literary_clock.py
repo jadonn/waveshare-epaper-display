@@ -3,6 +3,7 @@ import textwrap
 import sys
 
 from datetime import datetime
+from datetime import timedelta
 from glob import glob
 from random import randrange
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -24,6 +25,25 @@ def format_weather_description(weather_description):
     weather_dict = {1: splits[0]}
     weather_dict[2] = splits[1] if len(splits) > 1 else ''
     return weather_dict
+
+def getTimeQuotes(currentTime,depth):
+	hour_minute = currentTime.strftime('%H%M')
+
+	firstTry = True
+	if depth > 0:
+		firstTry = False
+
+	quotes_path = 'images/metadata/quote_%s_*_credits.png' % hour_minute
+	quotes = glob(quotes_path)
+	if len(quotes) == 0:
+		# print("No quotes for "+hour_minute)
+
+		# Call the same request, but 1 minute ago
+		return getTimeQuotes(currentTime-timedelta(minutes=1),depth+1)
+	else:
+		# print("Got quote for "+hour_minute)
+		return quotes, firstTry
+
 
 def main():
 
@@ -59,19 +79,20 @@ def main():
 	image.paste(iconImage, (20, 5))
 
 	now = datetime.now()
-	hour_minute = now.strftime('%H%M')
 
-	quotes_path = 'images/metadata/quote_%s_*_credits.png' % hour_minute
-	quotes = glob(quotes_path)
-	if len(quotes) == 0:
-		now_time = now.strftime('%H:%M')
+	quotes,firstTry=getTimeQuotes(now,0)
+
+	# Write the quote to screen
+	quote = quotes[randrange(0, len(quotes))]
+	quoteImage = Image.open(quote).convert('1')
+	image.paste(quoteImage, (0, 80))
+
+	# If not our first try, also write the current time
+	if not firstTry:
+		now_time = now.strftime('%I:%M %p')
 		draw_time = ImageDraw.Draw(image)
-		time_font = ImageFont.truetype('Literata72pt-Regular.ttf', 144)
-		draw_time.text((220, 150), now_time, font=time_font, fill=0)
-	else:
-		quote = quotes[randrange(0, len(quotes))]
-		quoteImage = Image.open(quote).convert('1')
-		image.paste(quoteImage, (0, 80))
+		time_font = ImageFont.truetype('Literata72pt-Regular.ttf', 30)
+		draw_time.text((670, 30), now_time, font=time_font, fill=0)
 
 	today = now.strftime('%a, %B, %d')
 	dayFont = ImageFont.truetype('Literata72pt-Regular.ttf', 48)
